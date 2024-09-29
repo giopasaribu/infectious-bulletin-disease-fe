@@ -60,6 +60,7 @@ const GanttChart = () => {
         for (const diseaseName in data) {
             diseaseCategories.push(diseaseName);
             const yearData = data[diseaseName];
+            const currentYIndex = yIndex; // Store the current value of yIndex
 
             for (const year in yearData) {
                 const weekRanges = yearData[year];
@@ -75,7 +76,7 @@ const GanttChart = () => {
                         name: diseaseName,
                         start: Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate()),
                         end: Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate()),
-                        y: yIndex,
+                        y: currentYIndex, // Use the fixed value here
                         customData: parseInt(cases, 10), // Store the number of cases as customData
                     });
                 });
@@ -89,21 +90,6 @@ const GanttChart = () => {
         };
     };
 
-
-    const parseWeekRange = (year, weekRange) => {
-        const [start, end] = weekRange.includes('-') ? weekRange.split('-') : [weekRange, weekRange];
-
-        const startDate = getDateFromWeek(year, start);
-        const endDate = getDateFromWeek(year, end);
-
-        return [Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate()),
-            Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate())];
-    };
-
-    const getDateFromWeek = (year, week) => {
-        // Moment's weeks start from 1, so no need to adjust the week number
-        return moment().utc().year(year).week(week.replace('W', '')).startOf('week').toDate();
-    };
 
     const handleApplyFilter = () => {
         if (inputDisease && inputYear) {
@@ -135,7 +121,7 @@ const GanttChart = () => {
             setChartData(formattedData.data);
             setCategories([filteredDisease]);
         }
-    }, [filteredDisease, filteredYear]);
+    }, [filteredDisease, filteredYear, allData]);
 
     const resetView = () => {
         setViewMode('yearly');
