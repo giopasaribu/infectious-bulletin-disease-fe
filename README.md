@@ -38,7 +38,7 @@ Create a `.env` file in the root directory of your project to manage environment
 ```env
 REACT_APP_API_URL=http://your-backend-url
 ```
-Replace `http://your-backend-alb-url` with the URL of your backend's Application Load Balancer (ALB) endpoint.
+Replace `http://your-backend-url` with the URL of your backend's Application.
 
 ## Running Locally
 To start the application in development mode:
