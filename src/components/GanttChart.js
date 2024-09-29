@@ -53,6 +53,7 @@ const GanttChart = () => {
             .catch(error => console.error('Error fetching data:', error));
     }, []);
 
+    // Function to construct gantt chart data
     const formatDataForGantt = (data, mode = 'yearly') => {
         const ganttData = [];
         const diseaseCategories = [];
@@ -131,8 +132,8 @@ const GanttChart = () => {
         setCategories(Object.keys(allData));
         setFilteredDisease('');
         setFilteredYear('');
-        setInputDisease(''); // Clear the disease input field
-        setInputYear(''); // Clear the year input field
+        setInputDisease('');
+        setInputYear('');
     };
 
     const toggleViewMode = (value) => {
@@ -155,15 +156,11 @@ const GanttChart = () => {
         }
     };
 
-
-
-
     const getTotalWeeks = () => {
         return moment().utc().year(maxYear).weeksInYear() * (maxYear - minYear + 1);
     };
 
     const minWidth = viewMode === 'weekly' ? getTotalWeeks() * 50 : 2000;
-
 
     const options = {
         chart: {
@@ -229,8 +226,6 @@ const GanttChart = () => {
             },
         }
     };
-
-
 
     return (
         <Container fluid>
@@ -320,7 +315,7 @@ const GanttChart = () => {
                         paddingBottom: '20px',
                         backgroundColor: '#fff'
                     }}>
-                        <div style={{ minWidth: '100%' }}> {/* Ensure Gantt chart itself manages horizontal scroll */}
+                        <div style={{ minWidth: '100%' }}>
                             <HighchartsReact
                                 highcharts={Highcharts}
                                 constructorType={'ganttChart'}
