@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import Highcharts from 'highcharts/highcharts-gantt';
 import HighchartsReact from 'highcharts-react-official';
-import { Container, Row, Col, Form, Button } from 'react-bootstrap';
+import { Container, Row, Col, Form, Button, ToggleButtonGroup, ToggleButton } from 'react-bootstrap';
 import axios from 'axios';
 import moment from 'moment';
 
@@ -13,19 +13,20 @@ const GanttChart = () => {
     const [categories, setCategories] = useState([]);
     const [diseaseNames, setDiseaseNames] = useState([]);
 
-    // input field is to keep data when it is changed without changing the search state
     const [inputDisease, setInputDisease] = useState('');
     const [inputYear, setInputYear] = useState('');
-
     const [filteredDisease, setFilteredDisease] = useState('');
     const [filteredYear, setFilteredYear] = useState('');
     const [allData, setAllData] = useState({});
-    const [viewMode, setViewMode] = useState('yearly'); // 'yearly' or 'weekly'
+    const [viewMode, setViewMode] = useState('yearly'); // Default to yearly
     const [minYear, setMinYear] = useState(2012); // Default or initial value
     const [maxYear, setMaxYear] = useState(2022); // Default or initial value
 
+    const [weeklyYear, setWeeklyYear] = useState(maxYear); // default to latest year
+
+
     useEffect(() => {
-        axios.get(`${apiUrl}/api/disease/get-disease`)
+        axios.get(`${apiUrl}/api/disease/get`)
             .then(response => {
                 const diseaseData = response.data;
                 setAllData(diseaseData);
@@ -55,17 +56,17 @@ const GanttChart = () => {
     const formatDataForGantt = (data, mode = 'yearly') => {
         const ganttData = [];
         const diseaseCategories = [];
-
         let yIndex = 0;
+
         for (const diseaseName in data) {
             diseaseCategories.push(diseaseName);
             const yearData = data[diseaseName];
-            const currentYIndex = yIndex; // Store the current value of yIndex
+            const currentYIndex = yIndex;
 
             for (const year in yearData) {
                 const weekRanges = yearData[year];
                 weekRanges.forEach(weekRange => {
-                    const [range, cases] = weekRange.split(','); // Split to get the week range and number of cases
+                    const [range, cases] = weekRange.split(',');
                     const [startWeek, endWeek] = range.includes('-') ? range.split('-') : [range, range];
 
                     const startDate = moment().utc().year(year).week(startWeek.replace('W', '')).startOf('week').toDate();
@@ -76,8 +77,8 @@ const GanttChart = () => {
                         name: diseaseName,
                         start: Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate()),
                         end: Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate()),
-                        y: currentYIndex, // Use the fixed value here
-                        customData: parseInt(cases, 10), // Store the number of cases as customData
+                        y: currentYIndex,
+                        customData: parseInt(cases, 10),
                     });
                 });
             }
@@ -90,12 +91,11 @@ const GanttChart = () => {
         };
     };
 
-
     const handleApplyFilter = () => {
         if (inputDisease && inputYear) {
             setFilteredDisease(inputDisease);
             setFilteredYear(inputYear);
-            setViewMode('weekly'); // Change view mode to weekly
+            setViewMode('weekly');
 
             const filteredData = {};
             if (allData[inputDisease]) {
@@ -110,7 +110,7 @@ const GanttChart = () => {
     };
 
     useEffect(() => {
-        if (filteredDisease && filteredYear) {
+        if (viewMode === 'weekly' && filteredDisease && filteredYear) {
             const filteredData = {};
             if (allData[filteredDisease]) {
                 filteredData[filteredDisease] = {
@@ -121,7 +121,8 @@ const GanttChart = () => {
             setChartData(formattedData.data);
             setCategories([filteredDisease]);
         }
-    }, [filteredDisease, filteredYear, allData]);
+    }, [filteredDisease, filteredYear, allData, viewMode]);
+
 
     const resetView = () => {
         setViewMode('yearly');
@@ -130,37 +131,68 @@ const GanttChart = () => {
         setCategories(Object.keys(allData));
         setFilteredDisease('');
         setFilteredYear('');
+        setInputDisease(''); // Clear the disease input field
+        setInputYear(''); // Clear the year input field
     };
 
-    const chartHeight = viewMode === 'weekly' ? 1080 : categories.length * 30 + 100;
+    const toggleViewMode = (value) => {
+        setViewMode(value);
+        if (value === 'weekly') {
+            setWeeklyYear(maxYear); // Default to the latest year
+            const filteredData = {};
+            for (const disease in allData) {
+                filteredData[disease] = {
+                    [maxYear]: allData[disease][maxYear] || [],
+                };
+            }
+            const formattedData = formatDataForGantt(filteredData, 'weekly');
+            setChartData(formattedData.data);
+            setCategories(Object.keys(allData));
+        } else {
+            const formattedData = formatDataForGantt(allData, value);
+            setChartData(formattedData.data);
+            setCategories(Object.keys(allData));
+        }
+    };
+
+
+
+
+    const getTotalWeeks = () => {
+        return moment().utc().year(maxYear).weeksInYear() * (maxYear - minYear + 1);
+    };
+
+    const minWidth = viewMode === 'weekly' ? getTotalWeeks() * 50 : 2000;
+
 
     const options = {
         chart: {
             type: 'gantt',
-            height: chartHeight,
+            height: viewMode === 'weekly' ? 1080 : categories.length * 30 + 100,
             scrollablePlotArea: {
                 minHeight: 600,
+                minWidth: minWidth,
                 scrollPositionY: 0,
                 scrollPositionX: 0,
             },
-            backgroundColor: 'rgba(255, 255, 255, 1)', // Ensure chart has a solid white background
+            backgroundColor: 'rgba(255, 255, 255, 1)',
         },
         title: {
-            text: `Infectious Disease Gantt Chart (${viewMode === 'yearly' ? 'Yearly View' : `Weekly View for ${filteredYear}`})`,
+            text: `Infectious Disease Gantt Chart (${viewMode === 'yearly' ? 'Yearly View' : 'Weekly View'})`,
         },
         xAxis: {
             type: 'datetime',
-            tickInterval: viewMode === 'weekly' ? 7 * 24 * 3600 * 1000 : 365 * 24 * 3600 * 1000, // Weekly or yearly
+            tickInterval: viewMode === 'weekly' ? 7 * 24 * 3600 * 1000 : 365 * 24 * 3600 * 1000,
             labels: {
-                format: viewMode === 'weekly' ? '{value:%W}' : '{value:%Y}', // Show weeks or years
+                format: viewMode === 'weekly' ? '{value:%W}' : '{value:%Y}',
                 align: 'center',
                 step: 1,
             },
-            min: viewMode === 'weekly' ? Date.UTC(filteredYear, 0, 1) : Date.UTC(minYear, 0, 1),
-            max: viewMode === 'weekly' ? Date.UTC(filteredYear, 11, 31) : Date.UTC(maxYear, 11, 31),
+            min: Date.UTC(minYear, 0, 1),
+            max: viewMode === 'weekly' ? Date.UTC(maxYear, 11, 31) : Date.UTC(maxYear, 11, 31),
             startOnTick: true,
             endOnTick: true,
-            gridLineWidth: 1,
+            gridLineWidth: 1
         },
         yAxis: {
             type: 'category',
@@ -189,32 +221,62 @@ const GanttChart = () => {
             pointWidth: 15,
         }],
         tooltip: {
-            style: {
-                color: '#000',  // Ensure tooltip text is black
-                opacity: 1,     // Make it fully opaque
-                zIndex: 99999,
-            },
-            backgroundColor: 'white', // Set tooltip background fully visible
-            borderWidth: 1,
-            borderColor: '#333', // Black border for better visibility
             formatter: function () {
                 return `<b>${this.point.name}</b><br/>
-                Start: ${Highcharts.dateFormat('%Y-%m-%d', this.point.start)}<br/>
-                End: ${Highcharts.dateFormat('%Y-%m-%d', this.point.end)}<br/>
-                Number of Cases: ${this.point.customData}`; // Display the number of cases
+            Start: ${Highcharts.dateFormat('%Y-%m-%d', this.point.start)}<br/>
+            End: ${Highcharts.dateFormat('%Y-%m-%d', this.point.end)}<br/>
+            Number of Cases: ${this.point.customData}`;
             },
         }
     };
 
+
+
     return (
         <Container fluid>
-            <Row className="mb-3">
+            <Row className="mb-4">
                 <Col>
-                    <h3 style={{ textAlign: 'left' }}>Infectious Disease Gantt Chart</h3>
+                    <h3 style={{ textAlign: 'center', marginBottom: '20px' }}>Infectious Disease Gantt Chart</h3>
                 </Col>
             </Row>
-            {/* Filter Controls */}
-            <Row className="mb-3">
+
+            {/* View Mode Selection */}
+            <Row className="mb-4" style={{ justifyContent: 'center', alignItems: 'center' }}>
+                <ToggleButtonGroup type="radio" name="viewMode" value={viewMode} onChange={toggleViewMode}>
+                    <ToggleButton variant="outline-primary" value="yearly">Yearly View</ToggleButton>
+                    <ToggleButton variant="outline-primary" value="weekly">Weekly View</ToggleButton>
+                </ToggleButtonGroup>
+                {viewMode === 'weekly' && (
+                    <Col md={2} style={{ marginLeft: '10px' }}>
+                        <Form.Control
+                            as="select"
+                            value={weeklyYear}
+                            onChange={(e) => {
+                                const selectedYear = e.target.value;
+                                setWeeklyYear(selectedYear);
+
+                                // Update chart data for the selected year
+                                const filteredData = {};
+                                for (const disease in allData) {
+                                    filteredData[disease] = {
+                                        [selectedYear]: allData[disease][selectedYear] || [],
+                                    };
+                                }
+                                const formattedData = formatDataForGantt(filteredData, 'weekly');
+                                setChartData(formattedData.data);
+                                setCategories(Object.keys(allData));
+                            }}
+                        >
+                            {Array.from({ length: maxYear - minYear + 1 }, (_, i) => minYear + i).map(year => (
+                                <option key={year} value={year}>{year}</option>
+                            ))}
+                        </Form.Control>
+                    </Col>
+                )}
+            </Row>
+
+            {/* Filter/Search Controls */}
+            <Row className="mb-4" style={{ justifyContent: 'center', alignItems: 'center' }}>
                 <Col md={3}>
                     <Form.Control
                         type="text"
@@ -241,22 +303,24 @@ const GanttChart = () => {
                         ))}
                     </Form.Control>
                 </Col>
-                <Col md={2}>
+                <Col md={2} style={{ display: 'flex', justifyContent: 'center' }}>
                     <Button variant="primary" onClick={handleApplyFilter}>Apply</Button>
                     <Button variant="secondary" className="ml-2" onClick={resetView}>Reset</Button>
                 </Col>
             </Row>
+
+            {/* Gantt Chart Display */}
             <Row>
                 <Col className="p-0">
                     <div style={{
                         maxHeight: '600px',
-                        overflowY: 'auto',
-                        overflowX: 'auto',
+                        overflowY: 'auto', // Allow vertical scroll if content exceeds height
+                        overflowX: 'hidden', // Hide horizontal scrollbar from the container
                         whiteSpace: 'nowrap',
                         paddingBottom: '20px',
                         backgroundColor: '#fff'
                     }}>
-                        <div style={{minWidth: '2000px', height: '100%', paddingBottom: '20px'}}>
+                        <div style={{ minWidth: '100%' }}> {/* Ensure Gantt chart itself manages horizontal scroll */}
                             <HighchartsReact
                                 highcharts={Highcharts}
                                 constructorType={'ganttChart'}
@@ -268,6 +332,7 @@ const GanttChart = () => {
             </Row>
         </Container>
     );
+
 };
 
 export default GanttChart;

@@ -1,70 +1,128 @@
-# Getting Started with Create React App
+# Infectious Disease Bulletin Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This is the frontend service for the Infectious Disease Bulletin application, built using React. It provides a user interface to visualize infectious disease data on a Gantt chart, with filtering options by disease name and year. The frontend communicates with the backend service to fetch disease data.
 
-## Available Scripts
+## Table of Contents
+- [Prerequisites](#prerequisites)
+- [Project Setup](#project-setup)
+- [Environment Variables](#environment-variables)
+- [Running Locally](#running-locally)
+- [Building and Deploying with CI/CD](#building-and-deploying-with-cicd)
+- [Accessing the Application](#accessing-the-application)
+- [Technologies Used](#technologies-used)
+- [License](#license)
 
-In the project directory, you can run:
+## Prerequisites
+- Node.js 16+
+- NPM or Yarn
 
-### `npm start`
+## Project Setup
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/your-username/infectious-disease-bulletin-frontend.git
+   cd infectious-disease-bulletin-frontend
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+   or, if you use yarn:
+   ```bash
+   yarn install
+   ```
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Environment Variables
+Create a `.env` file in the root directory of your project to manage environment variables.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+### Example `.env` file
+```env
+REACT_APP_API_URL=http://your-backend-url
+```
+Replace `http://your-backend-alb-url` with the URL of your backend's Application Load Balancer (ALB) endpoint.
 
-### `npm test`
+## Running Locally
+To start the application in development mode:
+```bash
+npm start
+```
+or, if you use yarn:
+```bash
+yarn start
+```
+The application will start at `http://localhost:3000`.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Building and Deploying with CI/CD
 
-### `npm run build`
+This project uses GitHub Actions for the CI/CD pipeline and is deployed to AWS S3.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### GitHub Actions Workflow (`deploy.yml`)
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+An example GitHub Actions workflow for deploying to S3 is as follows:
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+```yaml
+name: Build and Deploy React App
 
-### `npm run eject`
+on:
+  push:
+    branches:
+      - main  # Change this if you're using a different branch
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+      - name: Install dependencies
+        run: npm install
 
-## Learn More
+      - name: Build the React app
+        env:
+          REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL }}  # API URL from GitHub secrets
+        run: npm run build
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+      - name: Deploy to S3
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: "ap-southeast-1"
+          S3_BUCKET_NAME: "your-s3-bucket-name"
+        run: |
+          npm install -g aws-cli
+          aws s3 sync build/ s3://$S3_BUCKET_NAME --delete
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### Setting up Environment Variables in GitHub Secrets
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `REACT_APP_API_URL`
+- `AWS_REGION`
+- `S3_BUCKET_NAME`
 
-### Code Splitting
+These secrets should be configured in your GitHub repository settings.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## Accessing the Application
+After deployment, the frontend can be accessed via the S3 bucket URL or a custom domain if you set up AWS CloudFront.
 
-### Analyzing the Bundle Size
+### Steps to Access:
+1. Go to your S3 bucket in the AWS console.
+2. Under the **Properties** tab, locate the **Static website hosting** section.
+3. Use the **Bucket website endpoint** URL to access your application.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## Technologies Used
+- **React 16**: Frontend library
+- **React-Bootstrap**: Styling and layout
+- **Highcharts Gantt**: Gantt chart visualization
+- **Axios**: HTTP client for API communication
+- **AWS S3**: Static site hosting
+- **GitHub Actions**: CI/CD pipeline
 
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
